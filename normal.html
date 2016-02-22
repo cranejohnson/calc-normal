@@ -1,0 +1,781 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+
+
+
+<html>
+  <head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <title>Normal Depth</title>
+
+  <script type="text/javascript" src="http://code.jquery.com/jquery-latest.min.js"></script>
+  <script src="http://code.highcharts.com/highcharts.js"></script>
+  <script src="https://code.highcharts.com/highcharts-more.js"></script>
+  <script src="http://code.highcharts.com/modules/exporting.js"></script>
+  <script src="http://highcharts.github.io/export-csv/export-csv.js"></script>
+  <script type="text/javascript" src="https://code.jquery.com/ui/1.11.4/jquery-ui.min.js"></script>
+
+  <script type="text/javascript" src="jquery.jeditable.js"></script>
+  <script type="text/javascript" src="data.js"></script>
+  <script type ="text/javascript" src="grid.js"></script>
+  <script src="HC_draggable_plugin.js"></script>
+
+    <link rel="stylesheet" href="http://code.jquery.com/ui/1.10.3/themes/smoothness/jquery-ui.css">
+
+  <style>
+
+  	tr:nth-child(even) {background: #CCC}
+	tr:nth-child(odd) {background: #FFF}
+
+    table.testgrid {
+      border-collapse: collapse;
+       border: 1px solid #CCB;
+       }
+
+    table.testgrid td, table.testgrid th {
+      padding: 5px;
+      border: 1px solid #E0E0E0;
+      }
+
+    table.testgrid th {
+      background: #E5E5E5;
+      text-align: center;
+      }
+
+    #depths td {
+      width: 110px;
+      height: 20px;
+      text-align: center;
+    }
+    .input {
+      padding:10px;
+      width:200px;
+    border:1px dashed gray;
+    margin:5px;
+    }
+
+    .chart {
+    width: 800px;
+    float: left;
+    height: 500px;
+    margin: 0 1em 1em 0;
+    }
+    #leftCol {
+    width: 240px;
+    float:left;
+    }
+    #main {
+    width: 1400px;
+    float:left;
+    }
+
+  .editable form,
+  .editable button {
+    margin: inherit;
+    padding: inherit;
+    font: inherit;
+    color: inherit;
+    background: inherit;
+    border: inherit
+}
+
+  </style>
+<script>
+var  normalDepth = {
+    lengthUnits : 'ft',
+    wse : 8,
+    depth : 4,
+    flowArea: 0,
+    XSData : [
+        {x:0,y:28.77},
+        {x:6.7,y:28.61},
+        {x:13.47,y:25.25},
+        {x:21.95,y:23.9},
+        {x:31.19,y:23.69},
+        {x:31.74,y:23.59},
+        {x:42.2,y:19.54},
+        {x:58.04,y:18.04},
+        {x:86,y:17.45},
+        {x:115.7,y:17.67},
+        {x:139.77,y:16.98},
+        {x:169.64,y:16.76},
+        {x:187.41,y:14.62},
+        {x:188.56,y:11.85},
+        {x:199.34,y:10.7},
+        {x:206.49,y:9.79},
+        {x:219.48,y:8.49},
+        {x:229.36,y:7.65},
+        {x:239.39,y:7.44},
+        {x:254.45,y:7.33},
+        {x:269.64,y:8.15},
+        {x:283.8,y:7.7},
+        {x:300.43,y:6.46},
+        {x:311.14,y:6.04},
+        {x:320.12,y:7.92},
+        {x:330.35,y:8.88},
+        {x:339.18,y:8.77},
+        {x:350.08,y:8.1},
+        {x:359.61,y:8.29},
+        {x:365.68,y:9.72},
+        {x:370.56,y:14.04},
+        {x:379.36,y:16.27},
+        {x:384.52,y:25.42},
+        {x:405.55,y:27.73}
+    ],
+    n: 0.035,
+    slope : 0.002,
+    q : 20000
+    }
+
+
+
+  $(function() {
+
+
+
+   $( "#nslider" ).slider({
+      min: 0.005,
+      max: 0.15,
+      step: 0.001,
+      value: normalDepth.n,
+      slide: function( event, ui ) {
+          $( "#n" ).val( ui.value );
+        normalDepth.n = $("#n").val();
+      	updateChart();
+      },
+    stop: function( event, ui ) {
+        normalDepth.n = $("#n").val();
+      	updateChart();
+      }
+    });
+    $( "#n" ).val( $( "#nslider" ).slider( "value" ) );
+
+   $( "#sslider" ).slider({
+      min: 0.00001,
+      max: 0.01,
+      step: 0.0001,
+      value: normalDepth.slope,
+      slide: function( event, ui ) {
+          $( "#slope" ).val( ui.value );
+        normalDepth.slope = $("#slope").val();
+      	updateChart();
+      },
+    stop: function( event, ui ) {
+        normalDepth.slope = $("#slope").val();
+      	updateChart();
+      }
+    });
+  $( "#slope" ).val( $( "#sslider" ).slider( "value" ) );
+
+  $( "#qslider" ).slider({
+      min: 100.0,
+      max: 40000,
+      step: 100.0,
+      value: normalDepth.q,
+      slide: function( event, ui ) {
+          $( "#q" ).val( ui.value );
+        normalDepth.q = parseFloat($("#q").val());
+      	updateChart();
+      },
+    stop: function( event, ui ) {
+        normalDepth.q = parseFloat($("#q").val());
+      	updateChart();
+      }
+    });
+    $( "#q" ).val( $( "#qslider" ).slider( "value" ) );
+
+  $( "#wseslider" ).slider({
+      min: 0,
+      max: 35,
+      step: 0.1,
+      value: normalDepth.wse,
+      slide: function( event, ui ) {
+          $( "#wse" ).val( ui.value );
+        normalDepth.wse = parseFloat($("#wse").val());
+      	updateChart();
+      },
+    stop: function( event, ui ) {
+        normalDepth.wse = parseFloat($("#wse").val());
+      	updateChart();
+      }
+    });
+    $( "#wse" ).val( $( "#wseslider" ).slider( "value" ) );
+
+    $("#n").change(function() {
+    normalDepth.n = parseFloat($("#n").val());
+    updateChart();
+  });
+
+  $("#slope").change(function() {
+    normalDepth.slope = parseFloat($("#slope").val());
+    updateChart();
+  });
+
+  $("#q").change(function(){
+    normalDepth.q = parseFloat($("#q").val());
+    updateChart();
+  });
+
+  $("#wse").change(function(){
+    normalDepth.wse = parseFloat($("#wse").val());
+    updateChart();
+  });
+
+  });
+  </script>
+
+</head>
+<body>
+    <h3>Normal Depth Demonstration Tool</h3>
+    <div id='main'>
+    <div id='leftCol'>
+      <div class = 'input'>Solve For:
+        <select id = "solvetype">
+          <option value="s">Slope</option>
+          <option value="w" selected >Water Surface (normal depth)</option>
+          <option value="n">Manning's n value</option>
+          <option value="q">Discharge</option>
+        </select>
+      </div>
+      <div class = 'input'>Slope:<input type="text" id="slope" size = "5" value = "0.001"> (<span class="lengthUnits"></span>/<span class="lengthUnits"></span>)<br><br><div id="sslider"></div></div>
+      <div class = 'input'>WSE:<input type="text" id="wse" size = "5" value = ""> (<span class="lengthUnits"></span>)<br><br><div id='wseslider'></div></div>
+      <div class = 'input'>Channel Manning n:<input type="text" id="n" size = "5" value="0.035"><br><br><div id="nslider"></div></div>
+      <div class = 'input'>Flow:<input type="text" id="q" size = "10" value="400"> (<span class="lengthUnits"></span><sup>3</sup>/s)<br><br><div id='qslider'></div></div>
+<!--      <input type="radio" name="units" value="m" checked onclick="setUnits();calcPage();"> Meters<br>-->
+      <table class='testgrid'>
+	    <tr><td>Flow Area:</td><td> <span id='area'></span></td><tr>
+      	<tr><td>Wetted Perimeter:</td><td> <span id='wetP'></span></td><tr>
+      	<tr><td>Max Depth:</td><td> <span id='depth'></span> (<span class="lengthUnits"></span>)</td><tr>
+      	<tr><td>Average Velocity:</td><td> <span id='avgVel'></span> (<span class="lengthUnits"></span>/s)</td><tr>
+      	<tr><td>Top Width:</td><td> <span id='topWidth'></span> (<span class="lengthUnits"></span>)</td><tr>
+      	<tr><td>Iterations:</td><td> <span id='iterations'></span></td><tr>
+      	<tr><td>Froude Number:</td><td> <span id='froude'></span></td><tr>
+      </table>
+      <input type="button" value="Reset Cross Section" onClick="window.location.href=window.location.href">
+    </div>
+      <div id='section' class='chart'></div>
+       <div id='dataTable'></div>
+    </div>
+
+
+</body>
+
+<script>
+
+
+
+
+
+
+$('#section').highcharts({
+  credits: false,
+  tooltip: {
+  	pointFormat: "Elevation: {point.y:.2f} ft",
+  	shared: true,
+    positioner: function () {
+    return { x: 80, y: 50 };
+    }
+  },
+  plotOptions: {
+    series: {
+      //stickyTracking: false,
+      threshold: null,
+    }
+  },
+
+  chart: {
+    ignoreHiddenSeries : false,
+    events: {
+        click: function(e) {
+        //alert('clicked');
+        // find the clicked values and the series
+        var x = e.xAxis[0].value,
+        newY = Math.round(e.yAxis[0].value),
+        series = this.series[0].data;
+        var closest = series[0].x.value;
+        var i = 0;
+        $.each(series, function(){
+        if (closest == null || Math.abs(this.x - x) < Math.abs(closest - x)) {
+        closest = this.x;
+        i++;
+        }
+        });
+        this.series[0].data[i-1].update(y = newY);
+        updateChart();
+          }
+        }
+    },
+  series:
+    [{
+      data: normalDepth.XSData,
+      type : 'area',
+      name : 'Ground',
+
+      //draggableX: true,
+      draggableY: true,
+      draggableCallback : 'updateChart',
+      zIndex : 10,
+      animation : false,
+      color : 'brown',
+      fillOpacity: 1,
+      trackByArea:true,
+      events: {
+        click: function(e) {
+        alert('clicked');
+        // find the clicked values and the series
+        var x = e.xAxis[0].value,
+        newY = Math.round(e.yAxis[0].value),
+        series = this.series[0].data;
+        var closest = series[0].x.value;
+        var i = 0;
+        $.each(series, function(){
+        if (closest == null || Math.abs(this.x - x) < Math.abs(closest - x)) {
+        closest = this.x;
+        i++;
+        }
+        });
+        this.series[0].data[i-1].update(y = newY);
+        updateChart();
+          }
+        },
+      marker : {
+        fillColor: '#FFFFFF',
+      	enabled : true,
+      	radius: 3,
+      	lineColor: 'brown',
+      	lineWidth:1},
+    },
+    {
+      data: wsePlotData(normalDepth.XSData,normalDepth.wse),
+      type : 'area',
+      name : 'Water',
+      animation : false,
+      tooltip: { enabled: false},
+      zIndex: 1,
+      color : 'rgb(0,0,204)',
+      fillOpacity: 0.5,
+      marker : { enabled : false},
+      states: {
+        hover: {
+         enabled: false
+        }
+      }
+    },
+    {
+      data: normalDepth.XSData,
+      name : 'Original XS',
+      type : 'line',
+      zIndex : 20,
+      animation : false,
+      color : 'white',
+      showInLegend: false,
+      lineWidth: 1,
+      dashStyle: 'longdash',
+      enableMouseTracking: false,
+      marker : {
+      	enabled : false
+        },
+    }
+    ],
+  yAxis: {
+    title: {
+      enabled : true,
+      text : 'Elevation ('+normalDepth.lengthUnits+')',
+      style: {
+        fontSize : '16px'
+      }
+    }
+  },
+  xAxis: {
+    title: {
+      enabled : true,
+      text : 'Station ('+normalDepth.lengthUnits+')',
+      style: {
+        fontSize : '16px'
+      }
+    }
+  },
+  title: {
+    text: 'Cross Section'
+  }
+});
+
+updateChart();
+
+
+///////////////////////////////////
+//  Define Javascript Events
+///////////////////////////////////
+
+
+
+///////////////////////////////////
+//  Update JSON data from Chart data
+///////////////////////////////////
+
+
+function chartToJSONData(chartId,series){
+  var newData = new Array();
+  var chart= $('#'+chartId).highcharts();
+  series = chart.series[series].data;
+  $.each(series, function(){
+    var dataPoint = new Array();
+    dataPoint.push(this.x);
+    dataPoint.push(this.y);
+    newData.push(dataPoint);
+  });
+  return newData;
+}
+
+///////////////////////////////////
+//  Linear Interpolation
+///////////////////////////////////
+
+function lineInterpolate( point1, point2,XorY,value){
+  var result = new Object();
+  if(XorY == 'x'){
+  result.y = value;
+  ratio = (value-point1.y)/(point2.y-point1.y);
+  result.x = Math.round(point1.x+ratio*(point2.x-point1.x));
+  }
+  if(XorY == 'y'){
+  result.x = value;
+  ratio = (value-point1.x)/(point2.x-point1.x);
+  result.y = Math.round(point1.y+ratio*(point2.y-point1.y));
+  }
+  return result;
+}
+
+///////////////////////////////////
+//  Array Lookup
+///////////////////////////////////
+
+function arrayLookup(XorY,value,array){
+  var point = new Array();
+  for (i = 0; i < array.length-1; i++){
+    if(XorY == 'y'){
+      if(array[i+1][1] <= value) {
+        point = lineInterpolate(array[i],array[i+1],'y',value);
+        break;
+      }
+    }
+    if(XorY == 'x'){
+      if(array[i+1][0] >= value){
+        point = lineInterpolate(array[i],array[i+1],'x',value);
+        break;
+      }
+    }
+  }
+  return point;
+}
+
+
+ ///////////////////////////////////
+//  Creates HTML XS table
+///////////////////////////////////
+
+
+function createXSTable(XSdata,units,tableId,tableClass){
+  var idMarkup = tableId ? ' id="' + tableId + '"' : '';
+  var classMarkup = tableClass ? ' class="' + tableClass + '"' :'';
+  var tbl = '<table ' + idMarkup + classMarkup + '>';
+  tbl += "<thead><tr><th>PT ID</th><th>Station ("+units+")</th><th>Elevation ("+units+")</th></tr> </thead>";
+  tbl += "<tbody>";
+  for(i=1;i<=XSdata.length;i++){
+    tbl += "<tr ptId='"+i+"' class='dataRow'><td id='ptID'>"+i+"</td><td class='xValEdit' >"+XSdata[i-1].x.toFixed(1)+"</td><td class='yValEdit'>"+XSdata[i-1].y.toFixed(1)+"</td></tr>";
+    }
+  tbl += "</tbody></table>";
+  return tbl;
+}
+
+///////////////////////////////////
+//  Develops the water surface plot data
+///////////////////////////////////
+
+
+function wsePlotData(XSdata,wse){
+  var minX = 9999;
+  var maxX = -9999;
+  var data = new Array();
+  for(i=1;i<=XSdata.length;i++){
+    if(XSdata[i-1].x<minX) minX = XSdata[i-1].x;
+    if(XSdata[i-1].x>maxX) maxX = XSdata[i-1].x;
+    }
+  data = [{
+      x: minX,
+      y:wse},
+      {
+      x:maxX,
+      y:wse}];
+
+  return data;
+  }
+
+///////////////////////////////////
+//  Calculate area under the curve
+///////////////////////////////////
+
+function areaUnderCurve(XSdata){
+  var area = 0;
+  for(i=0;i<XSdata.length-1;i++){
+    area += ((XSdata[i].y+XSdata[i+1].y)/2)*(XSdata[i+1].x-XSdata[i].x);
+    }
+  return area;
+
+  }
+
+///////////////////////////////////
+//  Calculate Froude Number
+///////////////////////////////////
+
+function calcFroude(avgVel,avgDepth){
+    g=32;
+    froude = 0;
+    froude = avgVel/(Math.sqrt(g*avgDepth));
+  return froude;
+
+  }
+
+
+///////////////////////////////////
+//  Calculate top width
+///////////////////////////////////
+
+ function calcWidth(series,wse){
+  var trimmed = trimGround(series,wse);
+  var width = 0;
+  for(i=0;i<trimmed.length-1;i++){
+    if(trimmed[i].y<wse || trimmed[i+1].y<wse){
+      width += (trimmed[i+1].x-trimmed[i].x);
+    }
+  }
+  return width;
+}
+///////////////////////////////////
+//  Trim ground to max wse, return data
+///////////////////////////////////
+
+function trimGround(series,wse){
+  var trimmed = Array();
+  var yVal;
+  for(i=0;i<series.length-1;i++){
+    yVal = series[i].y;
+    if(series[i].y>wse) yVal = wse;
+    trimmed.push({
+          x:series[i].x,
+          y: yVal}
+          );
+    if((series[i].y>wse) && (series[i+1].y<wse)){
+      point = lineInterpolate(series[i],series[i+1],'x',wse);
+      trimmed.push(point);
+      }
+    if ((series[i].y<wse) && (series[i+1].y>wse)){
+      point = lineInterpolate(series[i],series[i+1],'x',wse);
+      trimmed.push(point);
+      }
+
+  }
+  yVal = series[series.length-1].y;
+  if(series[series.length-1].y>wse) yVal = wse;
+  trimmed.push({
+        x:series[series.length-1].x,
+        y: yVal}
+        );
+  return trimmed;
+}
+
+
+
+///////////////////////////////////
+//  Solve Mannings Equation
+//      Q = (k/n) AR2/3S1/2
+///////////////////////////////////
+
+function mannings(slope,nValue,discharge,wse,xsData,solveFor){
+  var k = 1.486;
+
+  if(solveFor == 'q'){
+    var wetP = wettedP(xsData,wse);
+    var area =   areaUnderCurve(wsePlotData(xsData,wse))-areaUnderCurve(trimGround(xsData,wse));
+    discharge = (k/nValue)*(area)*Math.pow(area/wetP,.666666)*Math.pow(slope,.5);
+    return discharge;
+
+  }
+  if(solveFor == 's'){
+    var wetP = wettedP(xsData,wse);
+    var area =   areaUnderCurve(wsePlotData(xsData,wse))-areaUnderCurve(trimGround(xsData,wse));
+    slope = Math.pow(discharge/((k/nValue)*(area)*Math.pow(area/wetP,.666666)),2);
+    return slope;
+
+  }
+  if(solveFor == 'n'){
+    var wetP = wettedP(xsData,wse);
+    var area =   areaUnderCurve(wsePlotData(xsData,wse))-areaUnderCurve(trimGround(xsData,wse));
+    nValue = ((k)*(area)*Math.pow(area/wetP,.666666)*Math.pow(slope,.5))/discharge;
+    return nValue;
+  }
+
+  if(solveFor == 'wse'){
+    var iterate = true;
+    var i = 0;
+    while(iterate){
+      var wetP = wettedP(xsData,wse);
+      var area = areaUnderCurve(wsePlotData(xsData,wse))-areaUnderCurve(trimGround(xsData,wse));
+      var newDischarge = (k/nValue)*(area)*Math.pow(area/wetP,.666666)*Math.pow(slope,.5);
+      var diff = Math.abs(newDischarge -  discharge);
+      //if (diff > oldDiff) iterate = false;
+      if(diff > discharge*.003){
+        iterate = true;
+      }
+      else{
+        iterate = false;
+      }
+
+      if(newDischarge > discharge){
+        direction = -1;
+       }
+      else{
+        direction = 1;
+      }
+
+      wse = wse + (direction*0.005);
+      i++;
+      if(i > 5000 || diff < (discharge*.0001)) iterate = false;
+      var oldDiff = diff;
+
+    }
+    if(i > 50000){
+		$("#iterations").html('max');
+	}
+	else{
+	 	$("#iterations").html(i);
+	}
+    return wse;
+  }
+}
+
+function calcWSE(series,depth){
+  var min = 9999;
+  var minpt = 0;
+  for(i=0;i<series.length;i++){
+    if(series[i].y<min) min = series[i].y;
+    }
+
+  return min+depth;
+}
+
+function calcDepth(series,wse){
+  var min = 9999;
+  var minpt = 0;
+  for(i=0;i<series.length;i++){
+    if(series[i].y<min) min = series[i].y;
+    }
+  return (wse-min);
+}
+
+function wettedP(series,wse){
+  var trimmed = trimGround(series,wse);
+  var wetP = 0;
+  for(i=0;i<trimmed.length-1;i++){
+    if(trimmed[i].y<wse || trimmed[i+1].y<wse){
+      wetP += Math.sqrt(Math.pow((trimmed[i+1].x-trimmed[i].x),2)+Math.pow((Math.abs(trimmed[i].y-trimmed[i+1].y)),2));
+    }
+  }
+  return wetP;
+}
+
+function calcVel(Q,A){
+  return Q/A;
+}
+
+
+function updateEvents(){
+    $(document).on('click','.xValEdit' ,function(){
+       $(this).editable(function(value,settings) {
+        return(value);
+          }, {
+             width : 'none',
+             onblur : 'submit',
+            cols : 10,
+          callback : function(value,settings) {
+            normalDepth.XSData[$(this).parent().attr("id")-1].x = parseFloat(value);
+            updateChart();
+            }
+        });
+      });
+
+    $(document).on('click','.yValEdit' ,function(){
+       $(this).editable(function(value,settings) {
+        return(value);
+          }, {
+             width : 'none',
+             onblur : 'submit',
+            cols : 10,
+          callback : function(value,settings) {
+            normalDepth.XSData[$(this).parent().attr("ptId")-1].y = parseFloat(value);
+            updateChart();
+            }
+        });
+      });
+}
+
+
+function solver(){
+  if($("#solvetype").val() == 'q')
+    normalDepth.q = mannings(normalDepth.slope,normalDepth.n,normalDepth.q,normalDepth.wse,normalDepth.XSData,'q');
+  if($("#solvetype").val() == 'w')
+    normalDepth.wse = mannings(normalDepth.slope,normalDepth.n,normalDepth.q,normalDepth.wse,normalDepth.XSData,'wse');
+  if($("#solvetype").val() == 'n')
+    normalDepth.n = mannings(normalDepth.slope,normalDepth.n,normalDepth.q,normalDepth.wse,normalDepth.XSData,'n');
+  if($("#solvetype").val() == 's')
+    normalDepth.slope = mannings(normalDepth.slope,normalDepth.n,normalDepth.q,normalDepth.wse,normalDepth.XSData,'s');
+
+  normalDepth.flowArea = areaUnderCurve(wsePlotData(normalDepth.XSData,normalDepth.wse))-areaUnderCurve(trimGround(normalDepth.XSData,normalDepth.wse));
+  if(normalDepth.flowArea < 0 ) normalDepth.flowArea = 0;
+  normalDepth.wetP = wettedP(normalDepth.XSData,normalDepth.wse);
+
+  normalDepth.topWidth = calcWidth(normalDepth.XSData,normalDepth.wse);
+
+  normalDepth.avgVel = calcVel(normalDepth.q,normalDepth.flowArea).toFixed(2);
+  normalDepth.froude = calcFroude(normalDepth.avgVel,(normalDepth.flowArea/normalDepth.topWidth));
+ }
+
+function loadFields(){
+  var chart= $('#section').highcharts();
+  $("#avgVel").html(normalDepth.avgVel);
+  $(".lengthUnits").html(normalDepth.lengthUnits);
+  $("#wetP").html(normalDepth.wetP.toFixed(1)+" ("+normalDepth.lengthUnits+")");
+  $("#q").val(normalDepth.q.toFixed(0));
+  $("#n").val(parseFloat(normalDepth.n).toFixed(3));
+  $("#nslider").slider({value : $("#n").val()});
+  $("#qslider").slider({value:$("#q").val()});
+  $("#wseslider").slider({value:$("#wse").val()});
+  $("#wseslider").slider({ min: chart.yAxis[0].getExtremes().dataMin});
+  $("#wseslider").slider({ max: chart.yAxis[0].max});
+
+  $("#slope").val(normalDepth.slope);
+  $("#froude").html(normalDepth.froude.toFixed(2));
+  $("#topWidth").html(normalDepth.topWidth);
+  $("#sslider").slider({value : $("#slope").val()});
+  $("#area").html(normalDepth.flowArea.toFixed(1)+" ("+normalDepth.lengthUnits+"<sup>2</sup>)");
+  $("#dataTable").html(createXSTable(normalDepth.XSData,normalDepth.lengthUnits,'xyData', 'testgrid'));
+  $("#wse").val(normalDepth.wse.toFixed(2));
+  $("#depth").html(calcDepth(normalDepth.XSData,normalDepth.wse).toFixed(2));
+}
+
+
+
+function updateChart(){
+  solver();
+  var chart= $('#section').highcharts();
+  chart.series[0].setData(normalDepth.XSData);
+  chart.series[1].setData(wsePlotData(normalDepth.XSData,normalDepth.wse));
+  var yDataMin = chart.yAxis[0].getExtremes().dataMin;
+  chart.series[0].update(chart.series[0].options);
+  chart.series[1].update(chart.series[1].options);
+  chart.yAxis[0].setExtremes(yDataMin-5,null);
+  loadFields();
+  updateEvents();
+}
+
+
+  </script>
