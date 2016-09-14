@@ -11,41 +11,16 @@
   <script src="http://code.highcharts.com/highcharts.js"></script>
   <script src="https://code.highcharts.com/highcharts-more.js"></script>
   <script src="http://code.highcharts.com/modules/exporting.js"></script>
-  <script src="http://highcharts.github.io/export-csv/export-csv.js"></script>
   <script type="text/javascript" src="https://code.jquery.com/ui/1.11.4/jquery-ui.min.js"></script>
 
-  <script type="text/javascript" src="jquery.jeditable.js"></script>
-  <script type="text/javascript" src="data.js"></script>
-  <script type ="text/javascript" src="grid.js"></script>
-  <script src="HC_draggable_plugin.js"></script>
+
+  <script src="https://rawgithub.com/highslide-software/draggable-points/master/draggable-points.js"></script>
 
     <link rel="stylesheet" href="http://code.jquery.com/ui/1.10.3/themes/smoothness/jquery-ui.css">
 
   <style>
 
-  	tr:nth-child(even) {background: #CCC}
-	tr:nth-child(odd) {background: #FFF}
 
-    table.testgrid {
-      border-collapse: collapse;
-       border: 1px solid #CCB;
-       }
-
-    table.testgrid td, table.testgrid th {
-      padding: 5px;
-      border: 1px solid #E0E0E0;
-      }
-
-    table.testgrid th {
-      background: #E5E5E5;
-      text-align: center;
-      }
-
-    #depths td {
-      width: 110px;
-      height: 20px;
-      text-align: center;
-    }
     .input {
       padding:10px;
       width:200px;
@@ -54,7 +29,7 @@
     }
 
     .chart {
-    width: 800px;
+    width: 700px;
     float: left;
     height: 500px;
     margin: 0 1em 1em 0;
@@ -64,22 +39,127 @@
     float:left;
     }
     #main {
-    width: 1400px;
+    width: 960px;
     float:left;
     }
 
-  .editable form,
-  .editable button {
-    margin: inherit;
-    padding: inherit;
-    font: inherit;
-    color: inherit;
-    background: inherit;
-    border: inherit
+    #dataTable: {
+    width:700px;
+    float:left;
+    }
+   textarea#xsInput {
+	width: 684px;
+	border: 3px solid #cccccc;
+	padding: 5px;
+	font-family: Tahoma, sans-serif;
 }
+
+
 
   </style>
 <script>
+
+Highcharts.theme = {
+	colors: ['#058DC7', '#50B432', '#ED561B', '#DDDF00', '#24CBE5', '#64E572', '#FF9655', '#FFF263', '#6AF9C4'],
+	chart: {
+		backgroundColor: {
+			linearGradient: { x1: 0, y1: 0, x2: 1, y2: 1 },
+			stops: [
+				[0, 'rgb(255, 255, 255)'],
+				[1, 'rgb(240, 240, 255)']
+			]
+		},
+		borderWidth: 2,
+		plotBackgroundColor: 'rgba(255, 255, 255, .9)',
+		plotShadow: true,
+		plotBorderWidth: 1
+	},
+	title: {
+		style: {
+			color: '#000',
+			font: 'bold 16px "Trebuchet MS", Verdana, sans-serif'
+		}
+	},
+	subtitle: {
+		style: {
+			color: '#666666',
+			font: 'bold 12px "Trebuchet MS", Verdana, sans-serif'
+		}
+	},
+	xAxis: {
+		gridLineWidth: 1,
+		lineColor: '#000',
+		tickColor: '#000',
+		labels: {
+			style: {
+				color: '#000',
+				font: '11px Trebuchet MS, Verdana, sans-serif'
+			}
+		},
+		title: {
+			style: {
+				color: '#333',
+				fontWeight: 'bold',
+				fontSize: '12px',
+				fontFamily: 'Trebuchet MS, Verdana, sans-serif'
+
+			}
+		}
+	},
+	yAxis: {
+		minorTickInterval: 'auto',
+		lineColor: '#000',
+		lineWidth: 1,
+		tickWidth: 1,
+		tickColor: '#000',
+		labels: {
+			style: {
+				color: '#000',
+				font: '11px Trebuchet MS, Verdana, sans-serif'
+			}
+		},
+		title: {
+			style: {
+				color: '#333',
+				fontWeight: 'bold',
+				fontSize: '12px',
+				fontFamily: 'Trebuchet MS, Verdana, sans-serif'
+			}
+		}
+	},
+	legend: {
+		itemStyle: {
+			font: '9pt Trebuchet MS, Verdana, sans-serif',
+			color: 'black'
+
+		},
+		itemHoverStyle: {
+			color: '#039'
+		},
+		itemHiddenStyle: {
+			color: 'gray'
+		}
+	},
+	labels: {
+		style: {
+			color: '#99b'
+		}
+	},
+
+	navigation: {
+		buttonOptions: {
+			theme: {
+				stroke: '#CCCCCC'
+			}
+		}
+	}
+};
+
+// Apply the theme
+var highchartsOptions = Highcharts.setOptions(Highcharts.theme);
+
+
+
 var  normalDepth = {
     lengthUnits : 'ft',
     wse : 8,
@@ -253,7 +333,10 @@ var  normalDepth = {
       <input type="button" value="Reset Cross Section" onClick="window.location.href=window.location.href">
     </div>
       <div id='section' class='chart'></div>
-       <div id='dataTable'></div>
+
+       <div id='dataTable'>Copy and Paste Cross Section Values (station,elevation)<br>
+       <button onclick="    updatePlotData('section',0,'xsInput'); updateChart();">Update Plot</button><br>
+       <textarea id='xsInput' placeholder="Cross Section Data Goes Here."></textarea></div>
     </div>
 
 
@@ -282,67 +365,47 @@ $('#section').highcharts({
     }
   },
 
-  chart: {
-    ignoreHiddenSeries : false,
-    events: {
-        click: function(e) {
-        //alert('clicked');
-        // find the clicked values and the series
-        var x = e.xAxis[0].value,
-        newY = Math.round(e.yAxis[0].value),
-        series = this.series[0].data;
-        var closest = series[0].x.value;
-        var i = 0;
-        $.each(series, function(){
-        if (closest == null || Math.abs(this.x - x) < Math.abs(closest - x)) {
-        closest = this.x;
-        i++;
-        }
-        });
-        this.series[0].data[i-1].update(y = newY);
-        updateChart();
-          }
+    chart: {
+        ignoreHiddenSeries : false,
+        events: {
+            click: function(e) {
+                //alert('clicked');
+                // find the clicked values and the series
+                var x = e.xAxis[0].value,
+                newY = Math.round(e.yAxis[0].value/0.1)*0.1,
+                series = this.series[0].data;
+                var closest = series[0].x.value;
+                var i = 0;
+                $.each(series, function(){
+                    if (closest == null || Math.abs(this.x - x) < Math.abs(closest - x)) {
+                        closest = this.x;
+                        i++;
+                    }
+                });
+                this.series[0].data[i-1].update(y = newY);
+                updateChart();
+            }
         }
     },
-  series:
+    series:
     [{
-      data: normalDepth.XSData,
-      type : 'area',
-      name : 'Ground',
-
-      //draggableX: true,
-      draggableY: true,
-      draggableCallback : 'updateChart',
-      zIndex : 10,
-      animation : false,
-      color : 'brown',
-      fillOpacity: 1,
-      trackByArea:true,
-      events: {
-        click: function(e) {
-        alert('clicked');
-        // find the clicked values and the series
-        var x = e.xAxis[0].value,
-        newY = Math.round(e.yAxis[0].value),
-        series = this.series[0].data;
-        var closest = series[0].x.value;
-        var i = 0;
-        $.each(series, function(){
-        if (closest == null || Math.abs(this.x - x) < Math.abs(closest - x)) {
-        closest = this.x;
-        i++;
-        }
-        });
-        this.series[0].data[i-1].update(y = newY);
-        updateChart();
-          }
+        data: normalDepth.XSData,
+        type : 'area',
+        name : 'Ground',
+        draggableY: true,
+        draggableCallback : 'updateChart',
+        dragPrecisionY: 0.01,
+        zIndex : 10,
+        animation : false,
+        color : 'brown',
+        fillOpacity: 1,
+        marker : {
+            fillColor: '#FFFFFF',
+            enabled : true,
+            radius: 3,
+            lineColor: 'brown',
+            lineWidth:1
         },
-      marker : {
-        fillColor: '#FFFFFF',
-      	enabled : true,
-      	radius: 3,
-      	lineColor: 'brown',
-      	lineWidth:1},
     },
     {
       data: wsePlotData(normalDepth.XSData,normalDepth.wse),
@@ -402,29 +465,61 @@ $('#section').highcharts({
 updateChart();
 
 
-///////////////////////////////////
-//  Define Javascript Events
-///////////////////////////////////
-
 
 
 ///////////////////////////////////
-//  Update JSON data from Chart data
+//  Update XS Data
 ///////////////////////////////////
 
+function updatePlotData(chartId,series,textId){
+    var text = $.trim($("#"+textId).val());
+    text = text.replace(/\r?\n/g, ',').replace(/\t/g,',');
+    var data = text.split(/[ ,]+/);
+    var x = true;
+    var plotData = [];
+    var num = 0;
+    $.each(data,function(){
 
-function chartToJSONData(chartId,series){
-  var newData = new Array();
-  var chart= $('#'+chartId).highcharts();
-  series = chart.series[series].data;
-  $.each(series, function(){
-    var dataPoint = new Array();
-    dataPoint.push(this.x);
-    dataPoint.push(this.y);
-    newData.push(dataPoint);
-  });
-  return newData;
+        if(x){
+            plotData[num] = {};
+            plotData[num].x = parseFloat(this);
+        }
+        if(!x) {
+            plotData[num].y = parseFloat(this);
+            num = num + 1;
+        }
+        x = !x;
+
+    });
+    var chart= $('#'+chartId).highcharts();
+    chart.series[0].setData(plotData);
+    chart.series[2].setData(plotData);
+    normalDepth.XSData = plotData;
+
 }
+
+
+///////////////////////////////////
+//  Update Text Area Data
+///////////////////////////////////
+
+function updateXSdata(chartId,series,textId){
+    console.log(textId);
+    var newData = new Array();
+    var chart= $('#'+chartId).highcharts();
+    var textData = '';
+    var h = 0;
+    series = chart.series[series].data;
+    $.each(series, function(){
+        textData = textData + this.x.toFixed(2) + ','+this.y.toFixed(2)+'\n';
+        h = h+1;
+  });
+  $("#"+textId).val(textData);
+  $("#"+textId).attr('rows', h);
+}
+
+
+
 
 ///////////////////////////////////
 //  Linear Interpolation
@@ -469,23 +564,7 @@ function arrayLookup(XorY,value,array){
 }
 
 
- ///////////////////////////////////
-//  Creates HTML XS table
-///////////////////////////////////
 
-
-function createXSTable(XSdata,units,tableId,tableClass){
-  var idMarkup = tableId ? ' id="' + tableId + '"' : '';
-  var classMarkup = tableClass ? ' class="' + tableClass + '"' :'';
-  var tbl = '<table ' + idMarkup + classMarkup + '>';
-  tbl += "<thead><tr><th>PT ID</th><th>Station ("+units+")</th><th>Elevation ("+units+")</th></tr> </thead>";
-  tbl += "<tbody>";
-  for(i=1;i<=XSdata.length;i++){
-    tbl += "<tr ptId='"+i+"' class='dataRow'><td id='ptID'>"+i+"</td><td class='xValEdit' >"+XSdata[i-1].x.toFixed(1)+"</td><td class='yValEdit'>"+XSdata[i-1].y.toFixed(1)+"</td></tr>";
-    }
-  tbl += "</tbody></table>";
-  return tbl;
-}
 
 ///////////////////////////////////
 //  Develops the water surface plot data
@@ -688,35 +767,7 @@ function calcVel(Q,A){
 }
 
 
-function updateEvents(){
-    $(document).on('click','.xValEdit' ,function(){
-       $(this).editable(function(value,settings) {
-        return(value);
-          }, {
-             width : 'none',
-             onblur : 'submit',
-            cols : 10,
-          callback : function(value,settings) {
-            normalDepth.XSData[$(this).parent().attr("id")-1].x = parseFloat(value);
-            updateChart();
-            }
-        });
-      });
 
-    $(document).on('click','.yValEdit' ,function(){
-       $(this).editable(function(value,settings) {
-        return(value);
-          }, {
-             width : 'none',
-             onblur : 'submit',
-            cols : 10,
-          callback : function(value,settings) {
-            normalDepth.XSData[$(this).parent().attr("ptId")-1].y = parseFloat(value);
-            updateChart();
-            }
-        });
-      });
-}
 
 
 function solver(){
@@ -757,24 +808,26 @@ function loadFields(){
   $("#topWidth").html(normalDepth.topWidth);
   $("#sslider").slider({value : $("#slope").val()});
   $("#area").html(normalDepth.flowArea.toFixed(1)+" ("+normalDepth.lengthUnits+"<sup>2</sup>)");
-  $("#dataTable").html(createXSTable(normalDepth.XSData,normalDepth.lengthUnits,'xyData', 'testgrid'));
   $("#wse").val(normalDepth.wse.toFixed(2));
   $("#depth").html(calcDepth(normalDepth.XSData,normalDepth.wse).toFixed(2));
 }
 
 
 
+
 function updateChart(){
-  solver();
-  var chart= $('#section').highcharts();
-  chart.series[0].setData(normalDepth.XSData);
-  chart.series[1].setData(wsePlotData(normalDepth.XSData,normalDepth.wse));
-  var yDataMin = chart.yAxis[0].getExtremes().dataMin;
-  chart.series[0].update(chart.series[0].options);
-  chart.series[1].update(chart.series[1].options);
-  chart.yAxis[0].setExtremes(yDataMin-5,null);
-  loadFields();
-  updateEvents();
+    updateXSdata('section',0,'xsInput');
+    solver();
+    var chart= $('#section').highcharts();
+    chart.series[0].setData(normalDepth.XSData);
+    chart.series[1].setData(wsePlotData(normalDepth.XSData,normalDepth.wse));
+    var yDataMin = chart.yAxis[0].getExtremes().dataMin;
+    chart.series[0].update(chart.series[0].options);
+    chart.series[1].update(chart.series[1].options);
+    chart.yAxis[0].setExtremes(yDataMin-5,null);
+    loadFields();
+
+
 }
 
 
