@@ -16,7 +16,7 @@
 
   <script src="https://rawgithub.com/highslide-software/draggable-points/master/draggable-points.js"></script>
 
-    <link rel="stylesheet" href="http://code.jquery.com/ui/1.10.3/themes/smoothness/jquery-ui.css">
+  <link rel="stylesheet" href="http://code.jquery.com/ui/1.10.3/themes/smoothness/jquery-ui.css">
 
   <style>
 
@@ -158,7 +158,42 @@ Highcharts.theme = {
 // Apply the theme
 var highchartsOptions = Highcharts.setOptions(Highcharts.theme);
 
-
+var defaultData = [
+        {x:0,y:28.77},
+        {x:6.7,y:28.61},
+        {x:13.47,y:25.25},
+        {x:21.95,y:23.9},
+        {x:31.19,y:23.69},
+        {x:31.74,y:23.59},
+        {x:42.2,y:19.54},
+        {x:58.04,y:18.04},
+        {x:86,y:17.45},
+        {x:115.7,y:17.67},
+        {x:139.77,y:16.98},
+        {x:169.64,y:16.76},
+        {x:187.41,y:14.62},
+        {x:188.56,y:11.85},
+        {x:199.34,y:10.7},
+        {x:206.49,y:9.79},
+        {x:219.48,y:8.49},
+        {x:229.36,y:7.65},
+        {x:239.39,y:7.44},
+        {x:254.45,y:7.33},
+        {x:269.64,y:8.15},
+        {x:283.8,y:7.7},
+        {x:300.43,y:6.46},
+        {x:311.14,y:6.04},
+        {x:320.12,y:7.92},
+        {x:330.35,y:8.88},
+        {x:339.18,y:8.77},
+        {x:350.08,y:8.1},
+        {x:359.61,y:8.29},
+        {x:365.68,y:9.72},
+        {x:370.56,y:14.04},
+        {x:379.36,y:16.27},
+        {x:384.52,y:25.42},
+        {x:405.55,y:27.73}
+    ];
 
 var  normalDepth = {
     lengthUnits : 'ft',
@@ -208,7 +243,7 @@ var  normalDepth = {
 
 
 
-  $(function() {
+$(function() {
 
 
 
@@ -330,7 +365,7 @@ var  normalDepth = {
       	<tr><td>Iterations:</td><td> <span id='iterations'></span></td><tr>
       	<tr><td>Froude Number:</td><td> <span id='froude'></span></td><tr>
       </table>
-      <input type="button" value="Reset Cross Section" onClick="window.location.href=window.location.href">
+      <input type="button" value="Reset Cross Section" onClick="resetXS('section')">
     </div>
       <div id='section' class='chart'></div>
 
@@ -348,28 +383,32 @@ var  normalDepth = {
 
 
 
-
 $('#section').highcharts({
-  credits: false,
-  tooltip: {
-  	pointFormat: "Elevation: {point.y:.2f} ft",
-  	shared: true,
-    positioner: function () {
-    return { x: 80, y: 50 };
-    }
-  },
-  plotOptions: {
-    series: {
-      //stickyTracking: false,
-      threshold: null,
-    }
-  },
+    wse:normalDepth.wse,
+    q:normalDepth.q,
+    n:normalDepth.n,
+    slope:normalDepth.slope,
+    credits: false,
+    tooltip: {
+        pointFormat: "Elevation: {point.y:.2f} ft",
+        shared: true,
+        positioner: function () {
+            return { x: 80, y: 50 };
+        }
+    },
+    plotOptions: {
+        series: {
+            stickyTracking: false,
+            threshold: null,
+
+        }
+    },
 
     chart: {
         ignoreHiddenSeries : false,
         events: {
             click: function(e) {
-                //alert('clicked');
+                console.log('clicked');
                 // find the clicked values and the series
                 var x = e.xAxis[0].value,
                 newY = Math.round(e.yAxis[0].value/0.1)*0.1,
@@ -393,9 +432,9 @@ $('#section').highcharts({
         type : 'area',
         name : 'Ground',
         draggableY: true,
-        draggableCallback : 'updateChart',
         dragPrecisionY: 0.01,
         zIndex : 10,
+        id:'ground',
         animation : false,
         color : 'brown',
         fillOpacity: 1,
@@ -406,6 +445,14 @@ $('#section').highcharts({
             lineColor: 'brown',
             lineWidth:1
         },
+        point:{
+            events:{
+                drop:function() {
+                    console.log('dropped');
+                    updateChart()
+                }
+            }
+        }
     },
     {
       data: wsePlotData(normalDepth.XSData,normalDepth.wse),
@@ -413,10 +460,12 @@ $('#section').highcharts({
       name : 'Water',
       animation : false,
       tooltip: { enabled: false},
+      id:'water',
       zIndex: 1,
       color : 'rgb(0,0,204)',
       fillOpacity: 0.5,
       marker : { enabled : false},
+      enableMouseTracking: false,
       states: {
         hover: {
          enabled: false
@@ -431,9 +480,15 @@ $('#section').highcharts({
       animation : false,
       color : 'white',
       showInLegend: false,
+      id:'originalGround',
       lineWidth: 1,
       dashStyle: 'longdash',
       enableMouseTracking: false,
+      states: {
+        hover: {
+         enabled: false
+        }
+      },
       marker : {
       	enabled : false
         },
@@ -463,6 +518,7 @@ $('#section').highcharts({
 });
 
 updateChart();
+
 
 
 
@@ -504,7 +560,6 @@ function updatePlotData(chartId,series,textId){
 ///////////////////////////////////
 
 function updateXSdata(chartId,series,textId){
-    console.log(textId);
     var newData = new Array();
     var chart= $('#'+chartId).highcharts();
     var textData = '';
@@ -790,6 +845,27 @@ function solver(){
   normalDepth.froude = calcFroude(normalDepth.avgVel,(normalDepth.flowArea/normalDepth.topWidth));
  }
 
+
+function resetXS(chartId){
+    var chart= $('#'+chartId).highcharts();
+    console.log(chart.series[2].data);
+    chart.series[0].setData(chart.series[2].data);
+    updateChart();
+}
+
+function updateChart(){
+    console.log('updating.....');
+    updateXSdata('section',0,'xsInput');
+    solver();
+    var chart= $('#section').highcharts();
+    chart.series[1].setData(wsePlotData(chart.series[0].data,normalDepth.wse));
+    var yDataMin = chart.yAxis[0].getExtremes().dataMin;
+    chart.yAxis[0].setExtremes(yDataMin-5,null);
+    loadFields();
+
+
+}
+
 function loadFields(){
   var chart= $('#section').highcharts();
   $("#avgVel").html(normalDepth.avgVel);
@@ -815,20 +891,7 @@ function loadFields(){
 
 
 
-function updateChart(){
-    updateXSdata('section',0,'xsInput');
-    solver();
-    var chart= $('#section').highcharts();
-    chart.series[0].setData(normalDepth.XSData);
-    chart.series[1].setData(wsePlotData(normalDepth.XSData,normalDepth.wse));
-    var yDataMin = chart.yAxis[0].getExtremes().dataMin;
-    chart.series[0].update(chart.series[0].options);
-    chart.series[1].update(chart.series[1].options);
-    chart.yAxis[0].setExtremes(yDataMin-5,null);
-    loadFields();
 
-
-}
 
 
   </script>
