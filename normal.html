@@ -22,7 +22,7 @@
 
 
     .input {
-      padding:10px;
+      padding:15px;
       width:200px;
     border:1px dashed gray;
     margin:5px;
@@ -245,8 +245,6 @@ var  normalDepth = {
 
 $(function() {
 
-
-
    $( "#nslider" ).slider({
       min: 0.005,
       max: 0.15,
@@ -266,7 +264,7 @@ $(function() {
 
    $( "#sslider" ).slider({
       min: 0.00001,
-      max: 0.01,
+      max: 0.02,
       step: 0.0001,
       value: normalDepth.slope,
       slide: function( event, ui ) {
@@ -354,7 +352,9 @@ $(function() {
       <div class = 'input'>Slope:<input type="text" id="slope" size = "5" value = "0.001"> (<span class="lengthUnits"></span>/<span class="lengthUnits"></span>)<br><br><div id="sslider"></div></div>
       <div class = 'input'>WSE:<input type="text" id="wse" size = "5" value = ""> (<span class="lengthUnits"></span>)<br><br><div id='wseslider'></div></div>
       <div class = 'input'>Channel Manning n:<input type="text" id="n" size = "5" value="0.035"><br><br><div id="nslider"></div></div>
-      <div class = 'input'>Flow:<input type="text" id="q" size = "10" value="400"> (<span class="lengthUnits"></span><sup>3</sup>/s)<br><br><div id='qslider'></div></div>
+      <div class = 'input'>Flow:<input type="text" id="q" size = "10" value="400"> (<span class="lengthUnits"></span><sup>3</sup>/s)<br><br><div id='qslider'></div>
+      <input type="text" id="minQ" size = "6" value="100" style="float:left;border: none;border-color: transparent;">
+      <input type="text" id="minQ" size = "10" value="40000" style="text-align:right;float:right;border: none;border-color: transparent;"></div>
 <!--      <input type="radio" name="units" value="m" checked onclick="setUnits();calcPage();"> Meters<br>-->
       <table class='testgrid'>
 	    <tr><td>Flow Area:</td><td> <span id='area'></span></td><tr>
@@ -365,7 +365,7 @@ $(function() {
       	<tr><td>Iterations:</td><td> <span id='iterations'></span></td><tr>
       	<tr><td>Froude Number:</td><td> <span id='froude'></span></td><tr>
       </table>
-      <input type="button" value="Reset Cross Section" onClick="resetXS('section')">
+      <input type="button" value="Reset Cross Section" onClick="resetXS('section'); updateChart();">
     </div>
       <div id='section' class='chart'></div>
 
@@ -410,18 +410,20 @@ $('#section').highcharts({
             click: function(e) {
                 console.log('clicked');
                 // find the clicked values and the series
-                var x = e.xAxis[0].value,
-                newY = Math.round(e.yAxis[0].value/0.1)*0.1,
-                series = this.series[0].data;
-                var closest = series[0].x.value;
+                var x = e.xAxis[0].value;
+                newY = Math.round(e.yAxis[0].value/0.1)*0.1;
+                series = this.get('ground');
+                var closest = -1;
                 var i = 0;
-                $.each(series, function(){
-                    if (closest == null || Math.abs(this.x - x) < Math.abs(closest - x)) {
-                        closest = this.x;
-                        i++;
+                var dist = 99999;
+                $.each(series.data, function(){
+                    if(Math.abs(this.x-x)<dist){
+                        dist = Math.abs(this.x-x);
+                        closest = i;
                     }
+                    i++;
                 });
-                this.series[0].data[i-1].update(y = newY);
+                series.data[closest].update(y = newY);
                 updateChart();
             }
         }
@@ -548,9 +550,18 @@ function updatePlotData(chartId,series,textId){
 
     });
     var chart= $('#'+chartId).highcharts();
-    chart.series[0].setData(plotData);
-    chart.series[2].setData(plotData);
+    chart.get('ground').setData(plotData);
+    chart.get('originalGround').setData(plotData);
     normalDepth.XSData = plotData;
+
+}
+
+function resetXS(chartId){
+    var chart= $('#'+chartId).highcharts();
+    console.log(chart.series[2].data);
+    chart.get('ground').setData(chart.get('originalGround').data);
+    chart.get('originalGround').setData(chart.get('originalGround').data);
+    normalDepth.XSData = chart.get('originalGround').data;
 
 }
 
@@ -751,6 +762,16 @@ function mannings(slope,nValue,discharge,wse,xsData,solveFor){
   if(solveFor == 'wse'){
     var iterate = true;
     var i = 0;
+    var minGround = 9999;
+    for(i=0;i<xsData.length-1;i++){
+        if(xsData[i].y<minGround) minGround = xsData[i].y;
+    }
+
+    if(wse < minGround){
+          wse = minGround +5;
+         console.log('New estimate for wse: '+wse);
+
+    }
     while(iterate){
       var wetP = wettedP(xsData,wse);
       var area = areaUnderCurve(wsePlotData(xsData,wse))-areaUnderCurve(trimGround(xsData,wse));
@@ -826,6 +847,7 @@ function calcVel(Q,A){
 
 
 function solver(){
+    console.log('solving');
   if($("#solvetype").val() == 'q')
     normalDepth.q = mannings(normalDepth.slope,normalDepth.n,normalDepth.q,normalDepth.wse,normalDepth.XSData,'q');
   if($("#solvetype").val() == 'w')
@@ -846,20 +868,15 @@ function solver(){
  }
 
 
-function resetXS(chartId){
-    var chart= $('#'+chartId).highcharts();
-    console.log(chart.series[2].data);
-    chart.series[0].setData(chart.series[2].data);
-    updateChart();
-}
 
 function updateChart(){
     console.log('updating.....');
     updateXSdata('section',0,'xsInput');
     solver();
     var chart= $('#section').highcharts();
-    chart.series[1].setData(wsePlotData(chart.series[0].data,normalDepth.wse));
+    chart.get('water').setData(wsePlotData(chart.get('ground').data,normalDepth.wse));
     var yDataMin = chart.yAxis[0].getExtremes().dataMin;
+    console.log(yDataMin);
     chart.yAxis[0].setExtremes(yDataMin-5,null);
     loadFields();
 
@@ -878,6 +895,7 @@ function loadFields(){
   $("#wseslider").slider({value:$("#wse").val()});
   $("#wseslider").slider({ min: chart.yAxis[0].getExtremes().dataMin});
   $("#wseslider").slider({ max: chart.yAxis[0].max});
+  console.log("minq: "+$("#qslider").slider("option","min"));
 
   $("#slope").val(normalDepth.slope);
   $("#froude").html(normalDepth.froude.toFixed(2));
