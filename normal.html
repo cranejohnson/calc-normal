@@ -435,6 +435,7 @@ $('#section').highcharts({
         name : 'Ground',
         draggableY: true,
         dragPrecisionY: 0.01,
+        enableMouseTracking: false,
         zIndex : 10,
         id:'ground',
         animation : false,
@@ -531,6 +532,16 @@ updateChart();
 
 function updatePlotData(chartId,series,textId){
     var text = $.trim($("#"+textId).val());
+    var splitStr = /Type RM Length L Ch R =/;
+    var Xsections = text.split(splitStr);
+
+    console.log(Xsections);
+    var re = /BEGIN DESCRIPTION:\s+(.+)\s+END DESCRIPTION:/m;
+    var arr = re.exec(text);
+    console.log(arr);
+
+
+
     text = text.replace(/\r?\n/g, ',').replace(/\t/g,',');
     var data = text.split(/[ ,]+/);
     var x = true;
@@ -552,16 +563,21 @@ function updatePlotData(chartId,series,textId){
     var chart= $('#'+chartId).highcharts();
     chart.get('ground').setData(plotData);
     chart.get('originalGround').setData(plotData);
-    normalDepth.XSData = plotData;
 
 }
 
 function resetXS(chartId){
     var chart= $('#'+chartId).highcharts();
-    console.log(chart.series[2].data);
-    chart.get('ground').setData(chart.get('originalGround').data);
-    chart.get('originalGround').setData(chart.get('originalGround').data);
-    normalDepth.XSData = chart.get('originalGround').data;
+    var plotData = [];
+    var num = 0;
+    $.each(chart.get('originalGround').data,function(){
+        plotData[num] = {};
+        plotData[num].x = parseFloat(this.x);
+        plotData[num].y = parseFloat(this.y);
+        num = num + 1;
+    });
+    chart.get('ground').setData(plotData);
+    //chart.get('originalGround').setData(chart.get('originalGround').data);
 
 }
 
@@ -736,6 +752,7 @@ function trimGround(series,wse){
 ///////////////////////////////////
 
 function mannings(slope,nValue,discharge,wse,xsData,solveFor){
+  console.log('solving for:'+solveFor);
   var k = 1.486;
 
   if(solveFor == 'q'){
@@ -846,22 +863,23 @@ function calcVel(Q,A){
 
 
 
-function solver(){
-    console.log('solving');
+function solver(chartId){
+  var chart= $('#'+chartId).highcharts();
+  XSData = chart.get('ground').data;
   if($("#solvetype").val() == 'q')
-    normalDepth.q = mannings(normalDepth.slope,normalDepth.n,normalDepth.q,normalDepth.wse,normalDepth.XSData,'q');
+    normalDepth.q = mannings(normalDepth.slope,normalDepth.n,normalDepth.q,normalDepth.wse,XSData,'q');
   if($("#solvetype").val() == 'w')
-    normalDepth.wse = mannings(normalDepth.slope,normalDepth.n,normalDepth.q,normalDepth.wse,normalDepth.XSData,'wse');
+    normalDepth.wse = mannings(normalDepth.slope,normalDepth.n,normalDepth.q,normalDepth.wse,XSData,'wse');
   if($("#solvetype").val() == 'n')
-    normalDepth.n = mannings(normalDepth.slope,normalDepth.n,normalDepth.q,normalDepth.wse,normalDepth.XSData,'n');
+    normalDepth.n = mannings(normalDepth.slope,normalDepth.n,normalDepth.q,normalDepth.wse,XSData,'n');
   if($("#solvetype").val() == 's')
-    normalDepth.slope = mannings(normalDepth.slope,normalDepth.n,normalDepth.q,normalDepth.wse,normalDepth.XSData,'s');
+    normalDepth.slope = mannings(normalDepth.slope,normalDepth.n,normalDepth.q,normalDepth.wse,XSData,'s');
 
-  normalDepth.flowArea = areaUnderCurve(wsePlotData(normalDepth.XSData,normalDepth.wse))-areaUnderCurve(trimGround(normalDepth.XSData,normalDepth.wse));
+  normalDepth.flowArea = areaUnderCurve(wsePlotData(XSData,normalDepth.wse))-areaUnderCurve(trimGround(XSData,normalDepth.wse));
   if(normalDepth.flowArea < 0 ) normalDepth.flowArea = 0;
-  normalDepth.wetP = wettedP(normalDepth.XSData,normalDepth.wse);
+  normalDepth.wetP = wettedP(XSData,normalDepth.wse);
 
-  normalDepth.topWidth = calcWidth(normalDepth.XSData,normalDepth.wse);
+  normalDepth.topWidth = calcWidth(XSData,normalDepth.wse);
 
   normalDepth.avgVel = calcVel(normalDepth.q,normalDepth.flowArea).toFixed(2);
   normalDepth.froude = calcFroude(normalDepth.avgVel,(normalDepth.flowArea/normalDepth.topWidth));
@@ -870,13 +888,11 @@ function solver(){
 
 
 function updateChart(){
-    console.log('updating.....');
     updateXSdata('section',0,'xsInput');
-    solver();
+    solver('section');
     var chart= $('#section').highcharts();
     chart.get('water').setData(wsePlotData(chart.get('ground').data,normalDepth.wse));
     var yDataMin = chart.yAxis[0].getExtremes().dataMin;
-    console.log(yDataMin);
     chart.yAxis[0].setExtremes(yDataMin-5,null);
     loadFields();
 
@@ -895,7 +911,7 @@ function loadFields(){
   $("#wseslider").slider({value:$("#wse").val()});
   $("#wseslider").slider({ min: chart.yAxis[0].getExtremes().dataMin});
   $("#wseslider").slider({ max: chart.yAxis[0].max});
-  console.log("minq: "+$("#qslider").slider("option","min"));
+  //console.log("minq: "+$("#qslider").slider("option","min"));
 
   $("#slope").val(normalDepth.slope);
   $("#froude").html(normalDepth.froude.toFixed(2));
