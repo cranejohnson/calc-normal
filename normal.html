@@ -48,7 +48,7 @@
     float:left;
     }
    textarea#xsInput {
-	width: 684px;
+	width: 220px;
 	border: 3px solid #cccccc;
 	padding: 5px;
 	font-family: Tahoma, sans-serif;
@@ -58,6 +58,8 @@
 
   </style>
 <script>
+
+
 
 Highcharts.theme = {
 	colors: ['#058DC7', '#50B432', '#ED561B', '#DDDF00', '#24CBE5', '#64E572', '#FF9655', '#FFF263', '#6AF9C4'],
@@ -356,6 +358,8 @@ $(function() {
       <input type="text" id="minQ" size = "6" value="100" style="float:left;border: none;border-color: transparent;">
       <input type="text" id="minQ" size = "10" value="40000" style="text-align:right;float:right;border: none;border-color: transparent;"></div>
 <!--      <input type="radio" name="units" value="m" checked onclick="setUnits();calcPage();"> Meters<br>-->
+      <input type="button" value="Reset Cross Section" onClick="resetXS('section'); updateChart();">
+
       <table class='testgrid'>
 	    <tr><td>Flow Area:</td><td> <span id='area'></span></td><tr>
       	<tr><td>Wetted Perimeter:</td><td> <span id='wetP'></span></td><tr>
@@ -365,13 +369,15 @@ $(function() {
       	<tr><td>Iterations:</td><td> <span id='iterations'></span></td><tr>
       	<tr><td>Froude Number:</td><td> <span id='froude'></span></td><tr>
       </table>
-      <input type="button" value="Reset Cross Section" onClick="resetXS('section'); updateChart();">
-    </div>
-      <div id='section' class='chart'></div>
+      <br><br>
+       <div id='dataTable'>Load CSV XS Data Below (station,elevation)<br>
 
-       <div id='dataTable'>Copy and Paste Cross Section Values (station,elevation)<br>
        <button onclick="    updatePlotData('section',0,'xsInput'); updateChart();">Update Plot</button><br>
        <textarea id='xsInput' placeholder="Cross Section Data Goes Here."></textarea></div>
+    </div>
+      <div id='section' class='chart'></div>
+        Select HECRAS Geometry:<input type="file" id="fileinput" /> <input type='button' id='btnLoad' value='Load HEC-RAS Data' onclick='console.log(handleFileSelect());'></br></br></br>
+        <select id='options' style="display:none"></select><br><br>
     </div>
 
 
@@ -380,7 +386,13 @@ $(function() {
 <script>
 
 
+$('#options').on('change', function() {
 
+    var chart= $('#section').highcharts();
+    chart.get('ground').setData(JSON.parse(this.value));
+    chart.get('originalGround').setData(JSON.parse(this.value));
+    updateChart();
+});
 
 
 $('#section').highcharts({
@@ -406,6 +418,7 @@ $('#section').highcharts({
 
     chart: {
         ignoreHiddenSeries : false,
+        zoomType: 'xy',
         events: {
             click: function(e) {
                 console.log('clicked');
@@ -530,17 +543,89 @@ updateChart();
 //  Update XS Data
 ///////////////////////////////////
 
+function handleFileSelect()
+  {
+    var hecrasData = [];
+    if (!window.File || !window.FileReader || !window.FileList || !window.Blob) {
+      alert('The File APIs are not fully supported in this browser.');
+      return;
+    }
+
+    input = document.getElementById('fileinput');
+    if (!input) {
+      alert("Um, couldn't find the fileinput element.");
+    }
+    else if (!input.files) {
+      alert("This browser doesn't seem to support the `files` property of file inputs.");
+    }
+    else if (!input.files[0]) {
+      alert("Please select a file before clicking 'Load'");
+    }
+    else {
+        file = input.files[0];
+        var reader = new FileReader();
+        reader.readAsText(file);
+        reader.onloadend=function(){
+            text = $.trim(reader.result);
+            var splitStr = /Type RM Length L Ch R =/;
+            var Xsections = text.split(splitStr);
+            $.each(Xsections,function(){
+                var section = {};
+                someText = this.replace(/(\r\n|\n|\r)/gm,"");
+                var re = /BEGIN DESCRIPTION:(.+)END DESCRIPTION:/m;
+                var arr = re.exec(someText);
+                if(arr == null) {return;}
+                section.title = arr[1];
+                var xsre = /#Sta\/Elev=\s+(\d+)(.+)#Mann/gmi;
+                arr = xsre.exec(someText);
+                if(arr == null) {return;}
+                section.xsNum = arr[1];
+                xsData = $.trim(arr[2]);
+                var data =  xsData.match(/\S+/g);
+                var plotData = [];
+                var i = 'x';
+                var num = 0;
+                $.each(data,function(){
+                    if(i == 'x'){
+                        plotData[num] = {};
+                        plotData[num].x = parseFloat(this);
+                        i = 'y';
+                    }else{
+                        plotData[num].y = parseFloat(this);
+                        i = 'x';
+                        num = num + 1;
+                    }
+                });
+                section.xsData = plotData;
+                console.log(section);
+                hecrasData.push(section);
+                console.log('pushed');
+
+            });
+             console.log(hecrasData);
+             var options = $("#options");
+             options.show();
+             $.each(hecrasData,function(){
+                    options.append($("<option />").val(JSON.stringify(this.xsData)).text(this.title+'('+this.xsNum+')'));
+             });
+                var chart= $('#section').highcharts();
+                chart.get('ground').setData(hecrasData[0].xsData);
+                chart.get('originalGround').setData(hecrasData[0].xsData);
+                updateXSdata('section',0,'xsInput');
+                updateChart();
+        }
+
+    }
+
+
+  }
+
+function receivedText() {
+    document.getElementById('editor').appendChild(document.createTextNode(fr.result));
+  }
+
 function updatePlotData(chartId,series,textId){
     var text = $.trim($("#"+textId).val());
-    var splitStr = /Type RM Length L Ch R =/;
-    var Xsections = text.split(splitStr);
-
-    console.log(Xsections);
-    var re = /BEGIN DESCRIPTION:\s+(.+)\s+END DESCRIPTION:/m;
-    var arr = re.exec(text);
-    console.log(arr);
-
-
 
     text = text.replace(/\r?\n/g, ',').replace(/\t/g,',');
     var data = text.split(/[ ,]+/);
