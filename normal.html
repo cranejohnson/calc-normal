@@ -330,8 +330,24 @@ $(function() {
   });
   </script>
 
+
+
     <h3>Normal Depth Demonstration Tool</h3>
     <div id='main'>
+One the most commonly used equations governing Open Channel Flow is known as the Mannings's Equation. It was introduced by the Irish Engineer Robert Manning in 1889 as an alternative to the Chezy Equation. The Mannings equation is an empirical equation that applies to uniform flow in open channels and is a function of the channel velocity, flow area and channel slope.
+<br>
+<img style="display: block; margin: 0 auto;" src="Eq_Manning.gif">
+<br>
+Where:<br>
+          Q = Flow Rate, (ft3/s)<br>
+          v = Velocity, (ft/s)<br>
+          A = Flow Area, (ft2)<br>
+          n = Manning’s Roughness Coefficient<br>
+          R = Hydraulic Radius, (ft)<br>
+          S = Channel Slope, (ft/ft)<br><br>
+
+Under the assumption of uniform flow conditions the bottom slope is the same as  the slope of the energy grade line and the water surface slope. The Manning’s n is a coefficient which represents the roughness or friction applied to the flow by the channel.   Manning’s n-values are often selected from tables, but can be back calculated from field measurements. In many flow conditions the selection of a Manning’s roughness coefficient can greatly affect computational results.<hr>
+<p><strong>Instructions:</strong> Select variable to solve, adjust slider bars, click on graph to modify the cross section. CSV cross section data can be loaded in the input box below.</p>
     <div id='leftCol'>
       <div class = 'input'>Solve For:
         <select id = "solvetype">
