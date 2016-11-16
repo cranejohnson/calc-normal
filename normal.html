@@ -271,12 +271,13 @@ $(function() {
       	updateChart();
       }
     });
+
   $( "#slope" ).val( $( "#sslider" ).slider( "value" ) );
 
   $( "#qslider" ).slider({
-      min: 100.0,
+      min: 100,
       max: 40000,
-      step: 100.0,
+      step: 100,
       value: normalDepth.q,
       slide: function( event, ui ) {
           $( "#q" ).val( ui.value );
@@ -288,6 +289,7 @@ $(function() {
       	updateChart();
       }
     });
+
     $( "#q" ).val( $( "#qslider" ).slider( "value" ) );
 
   $( "#wseslider" ).slider({
@@ -305,6 +307,7 @@ $(function() {
       	updateChart();
       }
     });
+
     $( "#wse" ).val( $( "#wseslider" ).slider( "value" ) );
 
     $("#n").change(function() {
@@ -362,7 +365,7 @@ Under the assumption of uniform flow conditions the bottom slope is the same as 
       <div class = 'input'>Channel Manning n:<input type="text" id="n" size = "5" value="0.035"><br><br><div id="nslider"></div></div>
       <div class = 'input'>Flow:<input type="text" id="q" size = "10" value="400"> (<span class="lengthUnits"></span><sup>3</sup>/s)<br><br><div id='qslider'></div>
       <input type="text" id="minQ" size = "6" value="100" style="float:left;border: none;border-color: transparent;">
-      <input type="text" id="minQ" size = "10" value="40000" style="text-align:right;float:right;border: none;border-color: transparent;"></div>
+      <input type="text" id="maxQ" size = "10" value="40000" style="text-align:right;float:right;border: none;border-color: transparent;"></div>
 <!--      <input type="radio" name="units" value="m" checked onclick="setUnits();calcPage();"> Meters<br>-->
       <input type="button" value="Reset Cross Section" onClick="resetXS('section'); updateChart();">
 
@@ -397,6 +400,15 @@ $('#options').on('change', function() {
     chart.get('ground').setData(JSON.parse(this.value));
     chart.get('originalGround').setData(JSON.parse(this.value));
     updateChart();
+});
+
+$('#minQ').on('change', function() {
+    $("#qslider" ).slider( "option", "min", parseInt(this.value) );
+});
+
+
+$('#maxQ').on('change', function() {
+    $("#qslider" ).slider( "option", "max", parseInt(this.value) );
 });
 
 
@@ -534,7 +546,7 @@ $('#section').highcharts({
     }
   },
   title: {
-    text: 'Cross Section'
+    text: 'Channel Cross Section'
   }
 });
 
