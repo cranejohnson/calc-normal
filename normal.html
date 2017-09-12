@@ -561,8 +561,7 @@ updateChart();
 //  Update XS Data
 ///////////////////////////////////
 
-function handleFileSelect()
-  {
+function handleFileSelect(){
     var hecrasData = [];
     if (!window.File || !window.FileReader || !window.FileList || !window.Blob) {
       alert('The File APIs are not fully supported in this browser.');
@@ -581,66 +580,75 @@ function handleFileSelect()
     }
     else {
         file = input.files[0];
+        var currentReach = "";
+        var currentRM = 0;
+        var inSection = false;
+        var pointNum = 0;
+        var section = {};
+        var plotData = [];
         var reader = new FileReader();
         reader.readAsText(file);
         reader.onloadend=function(){
             text = $.trim(reader.result);
-            var splitStr = /Type RM Length L Ch R =/;
-            var Xsections = text.split(splitStr);
-            $.each(Xsections,function(){
-                var section = {};
-                someText = this.replace(/(\r\n|\n|\r)/gm,"");
-                var re = /BEGIN DESCRIPTION:(.+)END DESCRIPTION:/m;
-                var arr = re.exec(someText);
-                if(arr == null) {return;}
-                section.title = arr[1];
-                var xsre = /#Sta\/Elev=\s+(\d+)(.+)#Mann/gmi;
-                arr = xsre.exec(someText);
-                if(arr == null) {return;}
-                section.xsNum = arr[1];
-                xsData = $.trim(arr[2]);
-                var data =  xsData.match(/\S+/g);
-                var plotData = [];
-                var i = 'x';
-                var num = 0;
-                $.each(data,function(){
-                    if(i == 'x'){
-                        plotData[num] = {};
-                        plotData[num].x = parseFloat(this);
-                        i = 'y';
-                    }else{
-                        plotData[num].y = parseFloat(this);
-                        i = 'x';
-                        num = num + 1;
-                    }
-                });
-                section.xsData = plotData;
-                console.log(section);
-                hecrasData.push(section);
-                console.log('pushed');
+            var lines = text.split("\n");
+            $.each(lines,function(i,line){
+                if((line.indexOf("River Reach=") >= 0)){
+                    var parts = line.split(/[=,]/);
+                    currentReach = parts[parts.length - 1];
+                }
+                if((line.indexOf("Type RM Length L Ch R")>=0)){
+                    var parts = line.split(/[=,]/);
+                    currentRM = parts[2];
+                }
+                if((line.indexOf("#Mann=")>= 0)){
+                    //End of secton
+                    pointNum = 0;
+                    inSection = false;
+                    section.xsData = plotData;
+                    hecrasData.push(section);
 
+                }
+                if(inSection){
+                    var parts = line.trim().split(/\s+/);
+                    var x = true;
+                    plotData[pointNum] = {};
+                    $.each(parts,function(){
+                        if(x){
+                            plotData[pointNum] = {};
+                            plotData[pointNum].x = parseFloat(this);
+                        }
+                        else{
+                            plotData[pointNum].y = parseFloat(this);
+                            pointNum = pointNum + 1;
+                        }
+                        x = !x;
+                    });
+                }
+                if((line.indexOf("#Sta/Elev=")>= 0)){
+                    inSection = true;
+                    section = {};
+                    plotData = [];
+                    section.title = currentReach+" RM:"+currentRM;
+
+                }
             });
-             console.log(hecrasData);
-             var options = $("#options");
-             options.show();
-             $.each(hecrasData,function(){
-                    options.append($("<option />").val(JSON.stringify(this.xsData)).text(this.title+'('+this.xsNum+')'));
-             });
-                var chart= $('#section').highcharts();
-                chart.get('ground').setData(hecrasData[0].xsData);
-                chart.get('originalGround').setData(hecrasData[0].xsData);
-                updateXSdata('section',0,'xsInput');
-                updateChart();
+            var options = $("#options");
+            options.show();
+            $.each(hecrasData,function(){
+                options.append($("<option />").val(JSON.stringify(this.xsData)).text(this.title));
+            });
+            var chart= $('#section').highcharts();
+            chart.get('ground').setData(hecrasData[0].xsData);
+            chart.get('originalGround').setData(hecrasData[0].xsData);
+            //updateXSdata('section',0,'xsInput');
+            updateChart();
         }
-
     }
-
-
-  }
+}
 
 function receivedText() {
     document.getElementById('editor').appendChild(document.createTextNode(fr.result));
-  }
+}
 
 function updatePlotData(chartId,series,textId){
     var text = $.trim($("#"+textId).val());
@@ -883,11 +891,18 @@ function mannings(slope,nValue,discharge,wse,xsData,solveFor){
     var iterate = true;
     var i = 0;
     var minGround = 9999;
+    var maxGround = -9999;
     for(i=0;i<xsData.length-1;i++){
         if(xsData[i].y<minGround) minGround = xsData[i].y;
+        if(xsData[i].y>maxGround) maxGround = xsData[i].y;
     }
 
     if(wse < minGround){
+          wse = minGround +5;
+         console.log('New estimate for wse: '+wse);
+
+    }
+    if(wse > maxGround){
           wse = minGround +5;
          console.log('New estimate for wse: '+wse);
 
@@ -941,6 +956,7 @@ function calcWSE(series,depth){
 function calcDepth(series,wse){
   var min = 9999;
   var minpt = 0;
+  console.log(series,wse);
   for(i=0;i<series.length;i++){
     if(series[i].y<min) min = series[i].y;
     }
@@ -968,21 +984,21 @@ function calcVel(Q,A){
 
 function solver(chartId){
   var chart= $('#'+chartId).highcharts();
-  XSData = chart.get('ground').data;
+  normalDepth.XSData = chart.get('ground').data;
   if($("#solvetype").val() == 'q')
-    normalDepth.q = mannings(normalDepth.slope,normalDepth.n,normalDepth.q,normalDepth.wse,XSData,'q');
+    normalDepth.q = mannings(normalDepth.slope,normalDepth.n,normalDepth.q,normalDepth.wse,normalDepth.XSData,'q');
   if($("#solvetype").val() == 'w')
-    normalDepth.wse = mannings(normalDepth.slope,normalDepth.n,normalDepth.q,normalDepth.wse,XSData,'wse');
+    normalDepth.wse = mannings(normalDepth.slope,normalDepth.n,normalDepth.q,normalDepth.wse,normalDepth.XSData,'wse');
   if($("#solvetype").val() == 'n')
-    normalDepth.n = mannings(normalDepth.slope,normalDepth.n,normalDepth.q,normalDepth.wse,XSData,'n');
+    normalDepth.n = mannings(normalDepth.slope,normalDepth.n,normalDepth.q,normalDepth.wse,normalDepth.XSData,'n');
   if($("#solvetype").val() == 's')
-    normalDepth.slope = mannings(normalDepth.slope,normalDepth.n,normalDepth.q,normalDepth.wse,XSData,'s');
+    normalDepth.slope = mannings(normalDepth.slope,normalDepth.n,normalDepth.q,normalDepth.wse,normalDepth.XSData,'s');
 
-  normalDepth.flowArea = areaUnderCurve(wsePlotData(XSData,normalDepth.wse))-areaUnderCurve(trimGround(XSData,normalDepth.wse));
+  normalDepth.flowArea = areaUnderCurve(wsePlotData(normalDepth.XSData,normalDepth.wse))-areaUnderCurve(trimGround(normalDepth.XSData,normalDepth.wse));
   if(normalDepth.flowArea < 0 ) normalDepth.flowArea = 0;
-  normalDepth.wetP = wettedP(XSData,normalDepth.wse);
+  normalDepth.wetP = wettedP(normalDepth.XSData,normalDepth.wse);
 
-  normalDepth.topWidth = calcWidth(XSData,normalDepth.wse);
+  normalDepth.topWidth = calcWidth(normalDepth.XSData,normalDepth.wse);
 
   normalDepth.avgVel = calcVel(normalDepth.q,normalDepth.flowArea).toFixed(2);
   normalDepth.froude = calcFroude(normalDepth.avgVel,(normalDepth.flowArea/normalDepth.topWidth));
